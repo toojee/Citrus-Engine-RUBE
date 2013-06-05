@@ -1,6 +1,6 @@
 /**
  * @author Tungstene
- * @version 1.0.0 - 31/05/2013 16:12
+ * @version 1.0.1 - 05/06/2013 16:12
  */
 
 package citrus.objects 
@@ -13,6 +13,9 @@ package citrus.objects
 	import Box2D.Common.Math.b2Vec2;
 	import Box2D.Dynamics.b2FilterData;
 	import Box2D.Dynamics.b2FixtureDef;
+	import Box2D.Dynamics.Joints.b2MouseJoint;
+	import Box2D.Dynamics.Joints.b2MouseJointDef;
+	import starling.display.DisplayObject;
 	//---------------------------------------------------------------------------------------------
 	import citrus.physics.box2d.Box2DShapeMaker;
 	import citrus.physics.PhysicsCollisionCategories;
@@ -20,6 +23,10 @@ package citrus.objects
 	public class RubeObjects extends Box2DPhysicsObject 
 	{
 		private var oBody:Object;
+		//-----------------------------------------------------------------------------------------
+		private var jointDef:b2MouseJointDef;
+		private var joint:b2MouseJoint;
+		private var mouseScope:DisplayObject;
 		//-----------------------------------------------------------------------------------------
 		//----------------------------------------------------------------- Fonction - constructeur
 		//-----------------------------------------------------------------------------------------
@@ -86,7 +93,7 @@ package citrus.objects
 			//-------------------------------------------------------
 			if ( oBody.linearDamping )       _body.SetLinearDamping( oBody.linearDamping );
 			if ( oBody.angularDamping )      _body.SetAngularDamping( oBody.angularDamping );
-			if ( oBody.angle > 0 )           _body.SetAngle( oBody.angle );
+			if ( oBody.angle > 0 )           _body.SetAngle( -oBody.angle );
 			if ( oBody.angularVelocity > 0 ) _body.SetAngularVelocity( oBody.angularVelocity );
 			//-------------------------------------------------------
 			if ( !(oBody.linearVelocity  is Number) ) _body.SetLinearVelocity( new b2Vec2( oBody.linearVelocity.x, oBody.linearVelocity.y ) );	
@@ -105,7 +112,6 @@ package citrus.objects
 			//-------------------------------------------------------
 			for ( var i:int = 0; i < max; i++ ) 
 			{
-				trace( name, i )
 				oFixture = oBody.fixture[i];
 				//---------------------------------------------------
 				_fixtureDef.density   = oFixture.density;
@@ -133,7 +139,7 @@ package citrus.objects
 				}
 				else
 				{
-					throw( new Error( "Forme non implémentée!" ) );
+					throw( new Error( "Shape not included!" ) );
 				}
 				//---------------------------------------------------
 				_fixtureDef.shape = shape;
@@ -146,17 +152,29 @@ package citrus.objects
 		protected function createVertices( vertices:Object ):Vector.<b2Vec2> 
 		{
 			var vVertices:Vector.<b2Vec2> = new Vector.<b2Vec2>();
-			var aVerticesX:Array = vertices.x;
-			var aVerticesY:Array = vertices.y;
+			var aVerticesX:Array = counterClockWise( vertices.x );
+			var aVerticesY:Array = counterClockWise( vertices.y );
 			//-------------------------------------------------------
 			var max:int = aVerticesX.length;
 			//-------------------------------------------------------
 			for ( var i:int = 0; i < max; i++ ) 
 			{
-				vVertices.push( new b2Vec2( aVerticesX[i], aVerticesY[i] ) );
+				vVertices.push( new b2Vec2( aVerticesX[i], -aVerticesY[i] ) );
 			}
 			//-------------------------------------------------------
 			return vVertices;
+		}
+		//-----------------------------------------------------------------------------------------
+		//------------------------------------------------- Change le sens de création des vertices
+		//-----------------------------------------------------------------------------------------
+		protected function counterClockWise( aRegular:Array ):Array
+		{
+			var originPoint:Number = aRegular.splice(0, 1 )
+			var aReversed:Array    = aRegular.reverse();
+			//-------------------------------------------------------
+			aReversed.unshift( originPoint );
+			//-------------------------------------------------------
+			return aReversed;
 		}
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------ Renvoit une description de l'objet

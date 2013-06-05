@@ -1,9 +1,9 @@
 /**
  * @author Tungstene
- * @version 1.0.0 - 30/05/2013 09:56
+ * @version 1.0.1 - 05/06/2013 16:12
  */
 
-package 
+package
 {
 	import Box2D.Collision.Shapes.b2PolygonShape;
 	import Box2D.Common.Math.b2Vec2;
@@ -17,6 +17,10 @@ package
 	import citrus.physics.box2d.Box2DShapeMaker;
 	import citrus.utils.objectmakers.ObjectMakerStarling2;
 	import starling.display.DisplayObject;
+	import starling.display.Image;
+	import starling.textures.Texture;
+	import starling.utils.deg2rad;
+	import starling.utils.rad2deg;
 	
 	public class LevelRube extends StarlingState
 	{		
@@ -48,7 +52,7 @@ package
 			hero.acceleration = 0.1
 			hero.touchable = true;
 			add( hero );
-			//-------------------------------------------------------
+			
 			var bar:Platform = new Platform( "bar", { x:1024*0.5, y:760, width:1024, height: 20 } ); 
 			bar.touchable = true;
 			add( bar );

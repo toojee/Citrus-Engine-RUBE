@@ -1,6 +1,6 @@
 /**
  * @author Tungstene
- * @version 1.0.0 - 31/05/2013 15:22
+ * @version 1.0.1 - 05/06/2013 16:12
  */
 
 package citrus.utils.objectmakers 
@@ -44,11 +44,8 @@ package citrus.utils.objectmakers
 			var aItems:Array    = [];
 			var oLevel:Object   = JSON.parse( JSONData );
 			//-------------------------------------------------------
-			if ( oLevel.body )   createBodies( oLevel.body, aItems );
-			
-			// Comment avoir le world autrement?
-			var world:b2World = (aItems[0] as RubeObjects).body.GetWorld();
-			if ( oLevel.joint ) createJoints( oLevel.joint, aItems, world );
+			if ( oLevel.body )  createBodies( oLevel.body, aItems );
+			if ( oLevel.joint ) createJoints( oLevel.joint, aItems );
 			//if ( oLevel.image )  createImages( oLevel.image, aItems );
 			//-------------------------------------------------------
 			return aItems;
@@ -77,11 +74,14 @@ package citrus.utils.objectmakers
 		//-----------------------------------------------------------------------------------------
 		//---------------------------------------------------------------------- Creation of JOINTS
 		//-----------------------------------------------------------------------------------------
-		private static function createJoints( aJoints:Array, aItems:Array, world:b2World ):void
+		private static function createJoints( aJoints:Array, aItems:Array ):void
 		{
+			if ( aItems.length == 0 ) return;
+			//-------------------------------------------------------
 			var joint:b2JointDef;
 			var oJoint:Object;
-			var max:int = aJoints.length;
+			var max:int       = aJoints.length;
+			var world:b2World = (aItems[0] as RubeObjects).body.GetWorld();
 			//-------------------------------------------------------
 			for ( var i:int = 0; i < max; i++ ) 
 			{
@@ -130,13 +130,13 @@ package citrus.utils.objectmakers
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
 			//-------------------------------------------------------
-			jointDef.localAnchorA.Set( oJoint.anchorA.x, oJoint.anchorA.y );
-			jointDef.localAnchorB.Set( oJoint.anchorB.x, oJoint.anchorB.y );
+			if ( !( oJoint.anchorA is Number) ) jointDef.localAnchorA.Set( oJoint.anchorA.x, -oJoint.anchorA.y );
+			if ( !( oJoint.anchorB is Number) ) jointDef.localAnchorB.Set( oJoint.anchorB.x, -oJoint.anchorB.y );
 			//-------------------------------------------------------	
 			jointDef.enableLimit    = oJoint.enableLimit;
 			jointDef.enableMotor    = oJoint.enableMotor;
-			jointDef.lowerAngle     = oJoint.lowerLimit;
-			jointDef.upperAngle     = oJoint.upperLimit;
+			jointDef.lowerAngle     = - oJoint.upperLimit;
+			jointDef.upperAngle     = - oJoint.lowerLimit;
 			jointDef.maxMotorTorque = oJoint.maxMotorTorque;
 			jointDef.motorSpeed     = oJoint.motorSpeed;
 			jointDef.referenceAngle = oJoint.refAngle;
@@ -156,8 +156,8 @@ package citrus.utils.objectmakers
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
 			//-------------------------------------------------------
-			jointDef.localAnchorA.Set( oJoint.anchorA.x, oJoint.anchorA.y );
-			jointDef.localAnchorB.Set( oJoint.anchorB.x, oJoint.anchorB.y );
+			if ( !( oJoint.anchorA is Number) ) jointDef.localAnchorA.Set( oJoint.anchorA.x, -oJoint.anchorA.y );
+			if ( !( oJoint.anchorB is Number) ) jointDef.localAnchorB.Set( oJoint.anchorB.x, -oJoint.anchorB.y );
 			//-------------------------------------------------------	
 			jointDef.dampingRatio = oJoint.dampingRatio;		
 			jointDef.frequencyHz  = oJoint.frequencyHz;		
@@ -178,19 +178,20 @@ package citrus.utils.objectmakers
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
 			//-------------------------------------------------------
-			jointDef.localAnchorA.Set( oJoint.anchorA.x, oJoint.anchorA.y );
-			jointDef.localAnchorB.Set( oJoint.anchorB.x, oJoint.anchorB.y );
+			if ( !( oJoint.anchorA is Number) ) jointDef.localAnchorA.Set( oJoint.anchorA.x, -oJoint.anchorA.y );
+			if ( !( oJoint.anchorB is Number) ) jointDef.localAnchorB.Set( oJoint.anchorB.x, -oJoint.anchorB.y );
 			//-------------------------------------------------------	
-			jointDef.localAxisA     = new b2Vec2( oJoint.localAxisA.x, oJoint.localAxisA.y );				
-			jointDef.enableLimit    = oJoint.enableLimit;
-			jointDef.enableMotor    = oJoint.enableMotor;
-			jointDef.maxMotorForce  = oJoint.maxMotorForce;
-			jointDef.motorSpeed     = oJoint.motorSpeed;
-			jointDef.referenceAngle = oJoint.refAngle;
+			jointDef.localAxisA       = new b2Vec2( oJoint.localAxisA.x, -oJoint.localAxisA.y );				
+			jointDef.enableLimit      = oJoint.enableLimit;
+			jointDef.enableMotor      = oJoint.enableMotor;
+			jointDef.lowerTranslation = oJoint.lowerLimit;
+			jointDef.upperTranslation = oJoint.upperLimit;
+			jointDef.maxMotorForce    = oJoint.maxMotorForce;
+			jointDef.motorSpeed       = oJoint.motorSpeed;
+			jointDef.referenceAngle   = oJoint.refAngle;
 			//-------------------------------------------------------
 			return jointDef;
 		}
-		
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------------------------------ Weld Joint
 		//-----------------------------------------------------------------------------------------
@@ -204,8 +205,8 @@ package citrus.utils.objectmakers
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
 			//-------------------------------------------------------
-			jointDef.localAnchorA.Set( oJoint.anchorA.x, oJoint.anchorA.y );
-			jointDef.localAnchorB.Set( oJoint.anchorB.x, oJoint.anchorB.y );
+			if ( !( oJoint.anchorA is Number) ) jointDef.localAnchorA.Set( oJoint.anchorA.x, -oJoint.anchorA.y );
+			if ( !( oJoint.anchorB is Number) ) jointDef.localAnchorB.Set( oJoint.anchorB.x, -oJoint.anchorB.y );
 			//-------------------------------------------------------
 			jointDef.referenceAngle = oJoint.refAngle;
 			//-------------------------------------------------------
@@ -224,8 +225,8 @@ package citrus.utils.objectmakers
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
 			//-------------------------------------------------------
-			jointDef.localAnchorA.Set( oJoint.anchorA.x, oJoint.anchorA.y );
-			jointDef.localAnchorB.Set( oJoint.anchorB.x, oJoint.anchorB.y );
+			if ( !( oJoint.anchorA is Number) ) jointDef.localAnchorA.Set( oJoint.anchorA.x, -oJoint.anchorA.y );
+			if ( !( oJoint.anchorB is Number) ) jointDef.localAnchorB.Set( oJoint.anchorB.x, -oJoint.anchorB.y );
 			//-------------------------------------------------------
 			jointDef.maxForce  = oJoint.maxForce;
 			jointDef.maxTorque = oJoint.maxTorque;
