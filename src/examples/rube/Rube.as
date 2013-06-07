@@ -1,25 +1,25 @@
 /**
  * @author Tungstene
- * @version 1.0.0 - 28/05/2013 14:28
+ * @version 1.0.2 - 07/06/2013 14:28
  */
 
-package
+package examples.rube
 {
 	import citrus.core.CitrusEngine;
 	import citrus.core.starling.StarlingCitrusEngine;
-	import citrus.utils.objectmakers.ObjectMakerStarling2;
 	import flash.events.Event;
 	import flash.display.StageAlign;
 	import flash.display.StageScaleMode;
 	import flash.net.URLLoader;
 	import flash.net.URLRequest;
+	import starling.core.Starling;
 	
-	public class RubeMain extends StarlingCitrusEngine 
+	public class Rube extends StarlingCitrusEngine 
 	{
 		//-----------------------------------------------------------------------------------------
 		//----------------------------------------------------------------- Fonction - constructeur
 		//-----------------------------------------------------------------------------------------
-		public function RubeMain():void 
+		public function Rube():void 
 		{
 			//-------------------------------------------------------
 			stage.scaleMode = StageScaleMode.NO_SCALE;
@@ -29,15 +29,17 @@ package
 			//-------------------------------------------------------
 			var loader:URLLoader = new URLLoader();
 			loader.addEventListener(Event.COMPLETE, levelLoaded);
-			loader.load(new URLRequest("rube.json"))
+			loader.load( new URLRequest("assets/levels/level_01.json") )
 		}
 		//-----------------------------------------------------------------------------------------
-		//----------------------------------------------------------- Au chargement complet du JSON
+		//-------------------------------------------------------------- Chargement complet du JSON
 		//-----------------------------------------------------------------------------------------
 		private function levelLoaded( e:Event ):void 
 		{
+			//-------------------------------------------------------
 			var level:LevelRube = new LevelRube( String (e.target.data) );
-			state = level;
+			state               = level;
+			//-------------------------------------------------------
 		}
 	}
 }

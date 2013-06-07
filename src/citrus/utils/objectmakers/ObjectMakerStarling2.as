@@ -8,19 +8,23 @@ package citrus.utils.objectmakers
 	import Box2D.Collision.Shapes.b2PolygonShape;
 	import Box2D.Common.Math.b2Vec2;
 	import Box2D.Dynamics.*;
+	import Box2D.Dynamics.Contacts.b2Contact;
 	import Box2D.Dynamics.Joints.*;
+	import citrus.objects.platformer.box2d.Hero;
+	import citrus.objects.rube.*;
+	import citrus.physics.box2d.Box2D;
+	import flash.utils.getQualifiedClassName;
 	//---------------------------------------------------------------------------------------------
 	import citrus.core.CitrusEngine;
 	import citrus.core.CitrusObject;
 	import citrus.core.IState;
 	import citrus.objects.Box2DPhysicsObject;
 	import citrus.objects.CitrusSprite;
-	import citrus.objects.RubeObjects;
 	//---------------------------------------------------------------------------------------------
 	import flash.display.BitmapData;
 	import flash.geom.Point;
 	import flash.utils.getDefinitionByName;
-	//---------------------------------------------------------------------------------------------
+	//--------------------------.-------------------------------------------------------------------
 	import starling.display.Image;
 	import starling.textures.Texture;
 	
@@ -33,30 +37,51 @@ package citrus.utils.objectmakers
 		public function ObjectMakerStarling2():void 
 		{
 			//-------------------------------------------------------
-			
 			//-------------------------------------------------------
 		}
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------------------------ Importation RUBE
 		//-----------------------------------------------------------------------------------------
-		public static function FromRUBE( JSONData:String, addToCurrentState:Boolean = true ):Array 
+		public static function FromRUBE( JSONData:String, vCustomClasses:Vector.<Class> = null ):Vector.<IRubeObject> 
 		{
-			var aItems:Array    = [];
-			var oLevel:Object   = JSON.parse( JSONData );
+			CitrusObject.hideParamWarnings = true;
 			//-------------------------------------------------------
-			if ( oLevel.body )  createBodies( oLevel.body, aItems );
-			if ( oLevel.joint ) createJoints( oLevel.joint, aItems );
-			//if ( oLevel.image )  createImages( oLevel.image, aItems );
+			var vRubeObjects:Vector.<IRubeObject> = new Vector.<IRubeObject>();
+			var oLevel:Object                     = JSON.parse( JSONData );
 			//-------------------------------------------------------
-			return aItems;
+			setupWorld( oLevel );
+			//-------------------------------------------------------
+			if ( oLevel.body )  createBodies( oLevel.body, vRubeObjects, vCustomClasses );
+			if ( oLevel.joint ) createJoints( oLevel.joint, vRubeObjects );
+			//-------------------------------------------------------
+			return vRubeObjects;
+		}
+		//-----------------------------------------------------------------------------------------
+		//-------------------------------------------------------------------------- Setup of world
+		//-----------------------------------------------------------------------------------------
+		static private function setupWorld( oLevel:Object ):void 
+		{
+			var box2d:Box2D    = (ce.state.getFirstObjectByType(Box2D) as Box2D);
+			var gravity:b2Vec2 = new b2Vec2();
+			//-------------------------------------------------------
+			if ( oLevel.gravity && oLevel.gravity.x ) gravity.x = oLevel.gravity.x;
+			if ( oLevel.gravity && oLevel.gravity.y ) gravity.y = -oLevel.gravity.y;
+			//-------------------------------------------------------
+			box2d.world.SetGravity( gravity );
+			//-------------------------------------------------------
+			//-------------------------------------------------------
+			//-------------------------------------------------------
+			box2d.velocityIterations = oLevel.velocityIterations;
+			box2d.positionIterations = oLevel.positionIterations;
+			ce.stage.frameRate       = oLevel.stepsPerSecond;
 		}
 		//-----------------------------------------------------------------------------------------
 		//---------------------------------------------------------------------- Creation of BODIES
 		//-----------------------------------------------------------------------------------------
-		private static function createBodies( aBodies:Array, aItems:Array ):void
+		private static function createBodies( aBodies:Array, vRubeObjects:Vector.<IRubeObject>, vCustomClasses:Vector.<Class> ):void
 		{
 			var oBody:Object;
-			var rube:RubeObjects;
+			var rube:IRubeObject;
 			var position:Point = new Point();
 			var max:int        = aBodies.length;
 			//-------------------------------------------------------
@@ -66,66 +91,103 @@ package citrus.utils.objectmakers
 				position.x  = !(oBody.position is Number) && oBody.position.x ? oBody.position.x : 0;
 				position.y  = !(oBody.position is Number) && oBody.position.y ? oBody.position.y : 0;
 				//---------------------------------------------------
-				rube = new RubeObjects( oBody.name, { x: position.x, y: position.y }, oBody );
-				ce.state.add( rube );
-				aItems.push( rube );				
+				rube = getRubeObject( oBody, position, vCustomClasses );
+				//---------------------------------------------------
+				ce.state.add( rube as Box2DPhysicsObject );
+				vRubeObjects.push( rube );				
 			}
+		}
+		//-----------------------------------------------------------------------------------------
+		//---------------------------------------------------------- Return the specify rube object
+		//-----------------------------------------------------------------------------------------
+		private static function getRubeObject( oBody:Object, position:Point, vCustomClasses:Vector.<Class> ):IRubeObject 
+		{
+			var value:*;
+			var oParams:Object          = new Object();
+			var aCustomProperties:Array = oBody.customProperties;
+			var max:int                 = aCustomProperties ? aCustomProperties.length : 0;
+			//-------------------------------------------------------
+			for ( var i:int = 0; i < max; i++ ) 
+			{
+				//---------------------------------------------------
+				if (      aCustomProperties[i].string )  value = new String( aCustomProperties[i].string );
+				else if ( aCustomProperties[i].vec2 )    value = !(aCustomProperties[i].vec2 is Number) ? new b2Vec2( aCustomProperties[i].vec2.x, aCustomProperties[i].vec2.y ) : new b2Vec2();
+				else if ( aCustomProperties[i].int )     value = new int( aCustomProperties[i].int );
+				else if ( aCustomProperties[i].float )   value = new Number( aCustomProperties[i].float );
+				else if ( aCustomProperties[i].boolean ) value = new Boolean( aCustomProperties[i].boolean );
+				else if ( aCustomProperties[i].color )   value = aCustomProperties[i].color;
+				else                                     value = "Error";
+				//---------------------------------------------------
+				oParams[ aCustomProperties[i].name ] = value;
+			}
+			//-------------------------------------------------------
+			oParams.x = position.x;
+			oParams.y = position.y;
+			//-------------------------------------------------------
+			//-------------------------------------------------------
+			//-------------------------------------------------------
+			var vRubeClass:Vector.<Class> = vCustomClasses.slice();
+			vRubeClass.push( RubeHero, RubePlatform, RubeMovingPlatform, RubeTreadmill, RubeEnemy, RubeCoin, RubeTeleporter, RubeSensor, RubeObject );
+			//-------------------------------------------------------
+			var RubeClass:Class;
+			var className:String;
+			var rubeObject:IRubeObject;
+			//-------------------------------------------------------
+			var citrusClass:String = oParams.citrusClass;
+			max                    = vRubeClass.length;
+			//-------------------------------------------------------
+			for ( i = 0; i < max; i++ ) 
+			{
+				RubeClass = vRubeClass[i];
+				className = getQualifiedClassName( RubeClass )
+				className = className.substr( className.lastIndexOf("::") + 2, className.length );
+				//---------------------------------------------------
+				if ( className == citrusClass 
+				||   className == "Rube" + citrusClass )
+				{
+					rubeObject = new RubeClass( oBody.name, oParams, oBody );
+				}
+			}
+			//-------------------------------------------------------
+			if( !rubeObject ) rubeObject = new RubeObject( oBody.name, oParams, oBody );
+			//-------------------------------------------------------
+			return rubeObject;
 		}
 		//-----------------------------------------------------------------------------------------
 		//---------------------------------------------------------------------- Creation of JOINTS
 		//-----------------------------------------------------------------------------------------
-		private static function createJoints( aJoints:Array, aItems:Array ):void
+		private static function createJoints( aJoints:Array, vRubeObjects:Vector.<IRubeObject> ):void
 		{
-			if ( aItems.length == 0 ) return;
+			if ( vRubeObjects.length == 0 ) return;
 			//-------------------------------------------------------
 			var joint:b2JointDef;
 			var oJoint:Object;
 			var max:int       = aJoints.length;
-			var world:b2World = (aItems[0] as RubeObjects).body.GetWorld();
+			var world:b2World = (ce.state.getFirstObjectByType(Box2D) as Box2D).world;
 			//-------------------------------------------------------
 			for ( var i:int = 0; i < max; i++ ) 
 			{
 				oJoint = aJoints[i];
 				//---------------------------------------------------
-				if (      oJoint.type == "revolute" )  joint = createRevoluteJoint( oJoint, aItems ); 
-				else if ( oJoint.type == "distance" )  joint = createDistanceJoint( oJoint, aItems ); 
-				else if ( oJoint.type == "prismatic" ) joint = createPrismaticJoint( oJoint, aItems ); 
-				else if ( oJoint.type == "weld" )      joint = createWeldJoint( oJoint, aItems ); 
-				else if ( oJoint.type == "friction" )  joint = createFrictionJoint( oJoint, aItems ); 
+				if (      oJoint.type == "revolute" )  joint = createRevoluteJoint( oJoint, vRubeObjects ); 
+				else if ( oJoint.type == "distance" )  joint = createDistanceJoint( oJoint, vRubeObjects ); 
+				else if ( oJoint.type == "prismatic" ) joint = createPrismaticJoint( oJoint, vRubeObjects ); 
+				else if ( oJoint.type == "weld" )      joint = createWeldJoint( oJoint, vRubeObjects ); 
+				else if ( oJoint.type == "friction" )  joint = createFrictionJoint( oJoint, vRubeObjects ); 
 				else                                   throw new Error( "The joint :" + oJoint.type + " is not implemented!" ); 
 				//---------------------------------------------------
 				world.CreateJoint( joint );
 			}
 		}
 		//-----------------------------------------------------------------------------------------
-		//---------------------------------------------------------------------- Creation of IMAGES
-		//-----------------------------------------------------------------------------------------
-		private static function createImages( aImages:Array, aItems:Array ):void
-		{
-			/*var texture:Texture;
-			var img:Image;
-			var bmdData:BitmapData;
-			var oImage:Object;
-			var max:int = aImages.length;
-			//-------------------------------------------------------
-			for ( var i:int = 0; i < max; i++ ) 
-			{
-				oImage  = aImages[i];
-				bmdData = new BitmapData(
-				texture = Texture.fromBitmapData( bmpData, false, false );
-				img     = new Image( texture );
-				background = new CitrusSprite("background", { view:Image.fromBitmap(new Assets.bg1()) } );
-			}*/
-		}
-		//-----------------------------------------------------------------------------------------
 		//-------------------------------------------------------------------------- Revolute Joint
 		//-----------------------------------------------------------------------------------------
-		private static function createRevoluteJoint( oJoint:Object, aItems:Array ):b2RevoluteJointDef
+		private static function createRevoluteJoint( oJoint:Object, vRubeObjects:Vector.<IRubeObject> ):b2RevoluteJointDef
 		{
 			var jointDef:b2RevoluteJointDef = new b2RevoluteJointDef();
 			//-------------------------------------------------------
-			jointDef.bodyA    = (aItems[ oJoint.bodyA ] as RubeObjects).body;
-			jointDef.bodyB    = (aItems[ oJoint.bodyB ] as RubeObjects).body;
+			jointDef.bodyA    = (vRubeObjects[ oJoint.bodyA ] as RubeObject).body;
+			jointDef.bodyB    = (vRubeObjects[ oJoint.bodyB ] as RubeObject).body;
 			jointDef.userData = { name: oJoint.name };
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
@@ -146,12 +208,12 @@ package citrus.utils.objectmakers
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------------------------- Prismatic Joint
 		//-----------------------------------------------------------------------------------------
-		private static function createDistanceJoint( oJoint:Object, aItems:Array ):b2DistanceJointDef
+		private static function createDistanceJoint( oJoint:Object, vRubeObjects:Vector.<IRubeObject> ):b2DistanceJointDef
 		{
 			var jointDef:b2DistanceJointDef = new b2DistanceJointDef();
 			//-------------------------------------------------------
-			jointDef.bodyA    = (aItems[ oJoint.bodyA ] as RubeObjects).body;
-			jointDef.bodyB    = (aItems[ oJoint.bodyB ] as RubeObjects).body;
+			jointDef.bodyA    = (vRubeObjects[ oJoint.bodyA ] as RubeObject).body;
+			jointDef.bodyB    = (vRubeObjects[ oJoint.bodyB ] as RubeObject).body;
 			jointDef.userData = { name: oJoint.name };
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
@@ -168,12 +230,12 @@ package citrus.utils.objectmakers
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------------------------- Prismatic Joint
 		//-----------------------------------------------------------------------------------------
-		private static function createPrismaticJoint( oJoint:Object, aItems:Array ):b2PrismaticJointDef
+		private static function createPrismaticJoint( oJoint:Object, vRubeObjects:Vector.<IRubeObject> ):b2PrismaticJointDef
 		{
 			var jointDef:b2PrismaticJointDef = new b2PrismaticJointDef();
 			//-------------------------------------------------------
-			jointDef.bodyA    = (aItems[ oJoint.bodyA ] as RubeObjects).body;
-			jointDef.bodyB    = (aItems[ oJoint.bodyB ] as RubeObjects).body;
+			jointDef.bodyA    = (vRubeObjects[ oJoint.bodyA ] as RubeObject).body;
+			jointDef.bodyB    = (vRubeObjects[ oJoint.bodyB ] as RubeObject).body;
 			jointDef.userData = { name: oJoint.name };
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
@@ -195,12 +257,12 @@ package citrus.utils.objectmakers
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------------------------------ Weld Joint
 		//-----------------------------------------------------------------------------------------
-		private static function createWeldJoint( oJoint:Object, aItems:Array ):b2WeldJointDef
+		private static function createWeldJoint( oJoint:Object, vRubeObjects:Vector.<IRubeObject> ):b2WeldJointDef
 		{
 			var jointDef:b2WeldJointDef = new b2WeldJointDef();
 			//-------------------------------------------------------
-			jointDef.bodyA    = (aItems[ oJoint.bodyA ] as RubeObjects).body;
-			jointDef.bodyB    = (aItems[ oJoint.bodyB ] as RubeObjects).body;
+			jointDef.bodyA    = (vRubeObjects[ oJoint.bodyA ] as RubeObject).body;
+			jointDef.bodyB    = (vRubeObjects[ oJoint.bodyB ] as RubeObject).body;
 			jointDef.userData = { name: oJoint.name };
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;
@@ -215,12 +277,12 @@ package citrus.utils.objectmakers
 		//-----------------------------------------------------------------------------------------
 		//-------------------------------------------------------------------------- Friction Joint
 		//-----------------------------------------------------------------------------------------
-		private static function createFrictionJoint( oJoint:Object, aItems:Array ):b2FrictionJointDef
+		private static function createFrictionJoint( oJoint:Object, vRubeObjects:Vector.<IRubeObject> ):b2FrictionJointDef
 		{
 			var jointDef:b2FrictionJointDef = new b2FrictionJointDef();
 			//-------------------------------------------------------
-			jointDef.bodyA    = (aItems[ oJoint.bodyA ] as RubeObjects).body;
-			jointDef.bodyB    = (aItems[ oJoint.bodyB ] as RubeObjects).body;
+			jointDef.bodyA    = (vRubeObjects[ oJoint.bodyA ] as RubeObject).body;
+			jointDef.bodyB    = (vRubeObjects[ oJoint.bodyB ] as RubeObject).body;
 			jointDef.userData = { name: oJoint.name };
 			//-------------------------------------------------------
 			if ( oJoint.collideConnected ) jointDef.collideConnected = oJoint.collideConnected;

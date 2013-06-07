@@ -1,79 +1,55 @@
 /**
  * @author Tungstene
- * @version 1.0.1 - 05/06/2013 16:12
+ * @version 1.0.0 - 05/06/2013 18:44
  */
 
-package citrus.objects 
+package citrus.objects.rube 
 {
 	import Box2D.Collision.Shapes.b2CircleShape;
-	import Box2D.Collision.Shapes.b2EdgeChainDef;
 	import Box2D.Collision.Shapes.b2MassData;
 	import Box2D.Collision.Shapes.b2PolygonShape;
 	import Box2D.Collision.Shapes.b2Shape;
 	import Box2D.Common.Math.b2Vec2;
-	import Box2D.Dynamics.b2FilterData;
+	import Box2D.Dynamics.b2Body;
+	import Box2D.Dynamics.b2BodyDef;
+	import Box2D.Dynamics.b2Fixture;
 	import Box2D.Dynamics.b2FixtureDef;
-	import Box2D.Dynamics.Joints.b2MouseJoint;
-	import Box2D.Dynamics.Joints.b2MouseJointDef;
-	import starling.display.DisplayObject;
-	//---------------------------------------------------------------------------------------------
-	import citrus.physics.box2d.Box2DShapeMaker;
-	import citrus.physics.PhysicsCollisionCategories;
 	
-	public class RubeObjects extends Box2DPhysicsObject 
+	public class RubeEngine 
 	{
-		private var oBody:Object;
+		private static var instance:RubeEngine;
 		//-----------------------------------------------------------------------------------------
-		private var jointDef:b2MouseJointDef;
-		private var joint:b2MouseJoint;
-		private var mouseScope:DisplayObject;
+		//------------------------------------------------------------------Fonction - constructeur
 		//-----------------------------------------------------------------------------------------
-		//----------------------------------------------------------------- Fonction - constructeur
-		//-----------------------------------------------------------------------------------------
-		public function RubeObjects( name:String, params:Object = null, oBody:Object = null ):void 
+		public function RubeEngine():void 
 		{
 			//-------------------------------------------------------
-			if (      params && params.registration == undefined ) params.registration = "topLeft";	
-			else if ( params == null )                             params = { registration:"topLeft" };
+			
 			//-------------------------------------------------------
-			super( name, params );
-			//-------------------------------------------------------
-			if ( params && params.x ) this.x = params.x * _box2D.scale;
-			if ( params && params.y ) this.y = -params.y * _box2D.scale;
-			//-------------------------------------------------------
-			this.oBody = oBody;
 		}
 		//-----------------------------------------------------------------------------------------
-		//------------------------------------------------------------------ Destruction de l'objet
+		//------------------------------------------------------------------Fonction - constructeur
 		//-----------------------------------------------------------------------------------------
-		override public function destroy():void 
+		public static function getInstance():RubeEngine 
 		{
-			super.destroy();
-		}
-		//-----------------------------------------------------------------------------------------
-		//------------------------------------------------------------- Update toutes les timeDelta
-		//-----------------------------------------------------------------------------------------
-		override public function update( timeDelta:Number ):void
-		{
-			super.update(timeDelta);
+			//-------------------------------------------------------
+			return instance ||= new RubeEngine();
+			//-------------------------------------------------------
 		}
 		//-----------------------------------------------------------------------------------------
 		//---------------------------------------------------------- Attribut les variables du BODY
 		//-----------------------------------------------------------------------------------------
-		override protected function defineBody():void
+		public function defineBody( bodyDef:b2BodyDef, oBody:Object ):void
 		{
 			//-------------------------------------------------------
-			super.defineBody();
+			bodyDef.type = oBody.type;
 			//-------------------------------------------------------
-			_bodyDef.type = oBody.type;
 		}
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------------------------ Création du BODY
 		//-----------------------------------------------------------------------------------------
-		override protected function createBody():void
+		public function createBody( body:b2Body, oBody:Object ):b2Body
 		{
-			//-------------------------------------------------------
-			super.createBody();
 			//-------------------------------------------------------
 			if ( oBody["massData-center"] )
 			{
@@ -81,48 +57,49 @@ package citrus.objects
 				massData.center         = new b2Vec2( oBody["massData-center"].x, oBody["massData-center"].y );
 				massData.I              = oBody["massData-I"];
 				massData.mass           = oBody["massData-mass"];
-				_body.SetMassData( massData );
+				body.SetMassData( massData );
 			}
 			//-------------------------------------------------------
-			if ( !oBody.awake ) _body.SetAwake( false );
+			if ( !oBody.awake ) body.SetAwake( false );
 			//-------------------------------------------------------
-			if ( oBody.active        != undefined ) _body.SetActive( false );
-			if ( oBody.allowSleep    != undefined ) _body.SetSleepingAllowed( false );
-			if ( oBody.bullet        != undefined ) _body.SetBullet( true );
-			if ( oBody.fixedRotation != undefined ) _body.SetFixedRotation( true );
+			if ( oBody.active        != undefined ) body.SetActive( false );
+			if ( oBody.allowSleep    != undefined ) body.SetSleepingAllowed( false );
+			if ( oBody.bullet        != undefined ) body.SetBullet( true );
+			if ( oBody.fixedRotation != undefined ) body.SetFixedRotation( true );
 			//-------------------------------------------------------
-			if ( oBody.linearDamping )       _body.SetLinearDamping( oBody.linearDamping );
-			if ( oBody.angularDamping )      _body.SetAngularDamping( oBody.angularDamping );
-			if ( oBody.angle > 0 )           _body.SetAngle( -oBody.angle );
-			if ( oBody.angularVelocity > 0 ) _body.SetAngularVelocity( oBody.angularVelocity );
+			if ( oBody.linearDamping )       body.SetLinearDamping( oBody.linearDamping );
+			if ( oBody.angularDamping )      body.SetAngularDamping( oBody.angularDamping );
+			if ( oBody.angle > 0 )           body.SetAngle( -oBody.angle );
+			if ( oBody.angularVelocity > 0 ) body.SetAngularVelocity( oBody.angularVelocity );
 			//-------------------------------------------------------
-			if ( !(oBody.linearVelocity  is Number) ) _body.SetLinearVelocity( new b2Vec2( oBody.linearVelocity.x, oBody.linearVelocity.y ) );	
+			if ( !(oBody.linearVelocity  is Number) ) body.SetLinearVelocity( new b2Vec2( oBody.linearVelocity.x, oBody.linearVelocity.y ) );	
+			//-------------------------------------------------------
+			return body;
 		}
 		//-----------------------------------------------------------------------------------------
 		//----------------------------------------------------- Attribut les variables des FIXTURES
 		//-----------------------------------------------------------------------------------------
-		override protected function defineFixture():void 
+		public function defineFixture( fixtureDef:b2FixtureDef, body:b2Body, oBody:Object ):void 
 		{
-			//-------------------------------------------------------
-			super.defineFixture();
 			//-------------------------------------------------------
 			var oFixture:Object;
 			var shape:b2Shape;
+			var vFixtures:Vector.<b2FixtureDef> = new Vector.<b2FixtureDef>;
 			var max:int = oBody.fixture.length;
 			//-------------------------------------------------------
 			for ( var i:int = 0; i < max; i++ ) 
 			{
 				oFixture = oBody.fixture[i];
 				//---------------------------------------------------
-				_fixtureDef.density   = oFixture.density;
-				_fixtureDef.friction  = oFixture.friction;
+				fixtureDef.density   = oFixture.density;
+				fixtureDef.friction  = oFixture.friction;
 				//---------------------------------------------------
-				if ( oFixture.restitution ) _fixtureDef.restitution = oFixture.restitution;
-				if ( oFixture.sensor )      _fixtureDef.isSensor    = oFixture.sensor;
+				if ( oFixture.restitution ) fixtureDef.restitution = oFixture.restitution;
+				if ( oFixture.sensor )      fixtureDef.isSensor    = oFixture.sensor;
 				//---------------------------------------------------
-				if ( oFixture["filter-categoryBits"] ) _fixtureDef.filter.categoryBits = oFixture["filter-categoryBits"];
-				if ( oFixture["filter-groupIndex"] )   _fixtureDef.filter.groupIndex   = oFixture["filter-groupIndex"];
-				if ( oFixture["filter-maskBits"] )     _fixtureDef.filter.maskBits     = oFixture["filter-maskBits"];
+				if ( oFixture["filter-categoryBits"] ) fixtureDef.filter.categoryBits = oFixture["filter-categoryBits"];
+				if ( oFixture["filter-groupIndex"] )   fixtureDef.filter.groupIndex   = oFixture["filter-groupIndex"];
+				if ( oFixture["filter-maskBits"] )     fixtureDef.filter.maskBits     = oFixture["filter-maskBits"];
 				//---------------------------------------------------
 				if ( oFixture.polygon )
 				{
@@ -135,21 +112,21 @@ package citrus.objects
 				else if ( oFixture.circle )
 				{
 					shape = new b2CircleShape( oFixture.circle.radius );	
-					if( !(oFixture.circle.center is Number) ) (shape as b2CircleShape).SetLocalPosition( new b2Vec2( oFixture.circle.center.x, oFixture.circle.center.y ) );
+					if( !(oFixture.circle.center is Number) ) (shape as b2CircleShape).SetLocalPosition( new b2Vec2( oFixture.circle.center.x, -oFixture.circle.center.y ) );
 				}
 				else
 				{
 					throw( new Error( "Shape not included!" ) );
 				}
 				//---------------------------------------------------
-				_fixtureDef.shape = shape;
-				_body.CreateFixture( _fixtureDef );				
+				fixtureDef.shape = shape;
+				body.CreateFixture( fixtureDef );		
 			}	
 		}
 		//-----------------------------------------------------------------------------------------
 		//------------------------------------------------------------------- Création des VERTICES
 		//-----------------------------------------------------------------------------------------
-		protected function createVertices( vertices:Object ):Vector.<b2Vec2> 
+		public function createVertices( vertices:Object ):Vector.<b2Vec2> 
 		{
 			var vVertices:Vector.<b2Vec2> = new Vector.<b2Vec2>();
 			var aVerticesX:Array = counterClockWise( vertices.x );
@@ -175,18 +152,6 @@ package citrus.objects
 			aReversed.unshift( originPoint );
 			//-------------------------------------------------------
 			return aReversed;
-		}
-		//-----------------------------------------------------------------------------------------
-		//------------------------------------------------------ Renvoit une description de l'objet
-		//-----------------------------------------------------------------------------------------
-		public function toString( ):String
-		{
-			return "[ RubeObjects " +
-					" name:"   + this.name +
-					" x:"      + this.x +
-					" y:"      + this.y +
-					" active:" + _body.IsActive() +
-					" ]";
 		}
 	}
 }
